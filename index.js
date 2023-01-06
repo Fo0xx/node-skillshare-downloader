@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
-import * as https from 'https';
+import axios from 'axios';
 
 // Load environment variables from .env file, where API keys and passwords are configured
 dotenv.config();
@@ -120,74 +120,63 @@ export default class Downloader {
     }
 
     async download_video(fpath, video_id) {
+        try {
+            const meta_url = `https://edge.api.brightcove.com/playback/v1/accounts/${this.brightcove_account_id}/videos/${video_id}`;
+            const meta_res = await axios.get(meta_url, {
+                headers: {
+                    Accept: `application/json;pk=${this.pk}`,
+                    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
+                    Origin: 'https://www.skillshare.com',
+                },
+            });
 
-        let meta_url = `https://edge.api.brightcove.com/playback/v1/accounts/${this.brightcove_account_id}/videos/${video_id}`;
+            //if (meta_res.statusCode != 200) throw new Error('Failed to fetch video meta');
+            let dl_url = null;
 
-        const meta_res = await (await fetch(meta_url, {
-            headers: {
-                'Accept': `application/json;pk=${this.pk}`,
-                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
-                'Origin': 'https://www.skillshare.com',
-            },
-        })).json();
-
-        //if (meta_res.statusCode != 200) throw new Error('Failed to fetch video meta');
-
-        let dl_url = null;
-
-        for (let x of meta_res['sources']) {
-            if ('container' in x) {
-                if (x['container'] == 'MP4' && 'src' in x) {
-                    dl_url = x['src'];
-                    break;
+            for (let x of meta_res.data.sources) {
+                if ('container' in x) {
+                    if (x.container === 'MP4' && 'src' in x) {
+                        dl_url = x.src;
+                        break;
+                    }
                 }
             }
-        }
 
-        console.log(`Downloading ${fpath}...`);
+            console.log(`Downloading ${fpath}...`);
 
-        if (fs.existsSync(fpath)) {
-            console.log('Video already downloaded, skipping...');
-            return;
-        }
-
-        const file = fs.createWriteStream(fpath);
-
-        const response = await fetch(dl_url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
-            }
-        });
-
-        let totalLength = response.headers.get('content-length');
-        let dl = 0;
-
-        if (!totalLength) {
-            file.write(await response.buffer());
-        } else {
-
-            // NOTE: this is a bit hacky but it works for now
-            totalLength = parseInt(totalLength, 10);
-
-            const reader = response.body.getReader();
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if(done) break;
-
-                dl += value.length;
-                file.write(value);
-                const done2 = Math.round(50 * dl / totalLength);
-                process.stdout.clearLine();
-                process.stdout.cursorTo(0);
-                process.stdout.write(`\r[${"=".repeat(done2)}${" ".repeat(50 - done2)}]`);
+            if (fs.existsSync(fpath)) {
+                console.log('Video already downloaded, skipping...');
+                return;
             }
 
-            
+            const file = fs.createWriteStream(fpath);
+
+            const { data, headers } = await axios.get(dl_url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
+                },
+                responseType: 'stream',
+            });
+
+            const totalLength = headers['content-length'];
+            let downloadedLength = 0;
+
+            data.on('data', (chunk) => {
+                downloadedLength += chunk.length;
+                const progress = (downloadedLength / totalLength) * 100;
+                console.log(`Progress: ${Math.round(progress)}%`);
+            });
+
+            data.pipe(file);
+
+        } catch (error) {
+            console.error(error);
         }
 
-        console.log('');
-
+        console.log(``);
     }
 
 }
+
+let downloader = new Downloader();
+downloader.download_course_by_class_id('1964298307');
