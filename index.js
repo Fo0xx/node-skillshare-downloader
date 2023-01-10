@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
 import axios from 'axios';
+import ProgressBar from 'progress';
 
 // Load environment variables from .env file, where API keys and passwords are configured
 dotenv.config();
@@ -84,14 +85,14 @@ export default class Downloader {
 
                 let file_name = `${(s['index'] + 1).toString().padStart(2, '0')} - ${slugify(s_title)}`;
 
-                this.download_video(
+                await this.download_video(
                     path.join(base_path, `${file_name}.mp4`),
                     video_id,
                 );
+
+                console.log('');
             }
         }
-
-        console.log(``);
 
     }
 
@@ -120,57 +121,64 @@ export default class Downloader {
     }
 
     async download_video(fpath, video_id) {
-        try {
-            const meta_url = `https://edge.api.brightcove.com/playback/v1/accounts/${this.brightcove_account_id}/videos/${video_id}`;
-            const meta_res = await axios.get(meta_url, {
-                headers: {
-                    Accept: `application/json;pk=${this.pk}`,
-                    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
-                    Origin: 'https://www.skillshare.com',
-                },
-            });
 
-            //if (meta_res.statusCode != 200) throw new Error('Failed to fetch video meta');
-            let dl_url = null;
+        const meta_url = `https://edge.api.brightcove.com/playback/v1/accounts/${this.brightcove_account_id}/videos/${video_id}`;
+        const meta_res = await axios.get(meta_url, {
+            headers: {
+                Accept: `application/json;pk=${this.pk}`,
+                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
+                Origin: 'https://www.skillshare.com',
+            },
+        });
 
-            for (let x of meta_res.data.sources) {
-                if ('container' in x) {
-                    if (x.container === 'MP4' && 'src' in x) {
-                        dl_url = x.src;
-                        break;
-                    }
+        //if (meta_res.statusCode != 200) throw new Error('Failed to fetch video meta');
+        let dl_url = null;
+
+        for (let x of meta_res.data.sources) {
+            if ('container' in x) {
+                if (x.container === 'MP4' && 'src' in x) {
+                    dl_url = x.src;
+                    break;
                 }
             }
+        }
 
-            console.log(`Downloading ${fpath}...`);
+        console.log(`Downloading ${fpath}...`);
 
-            if (fs.existsSync(fpath)) {
-                console.log('Video already downloaded, skipping...');
-                return;
-            }
+        if (fs.existsSync(fpath)) {
+            console.log('Video already downloaded, skipping...');
+            return;
+        }
 
-            const file = fs.createWriteStream(fpath);
+        const { data, headers } = await axios.get(dl_url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
+            },
+            responseType: 'stream',
+        });
 
-            const { data, headers } = await axios.get(dl_url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0',
-                },
-                responseType: 'stream',
+        const totalLength = headers['content-length'];
+
+        if (!totalLength) {
+            file.write(data);
+        } else {
+
+            const progressBar = new ProgressBar('-> downloading [:bar] :percent :etas', {
+                width: 40,
+                complete: '=',
+                incomplete: ' ',
+                renderThrottle: 1,
+                total: parseInt(totalLength)
             });
 
-            const totalLength = headers['content-length'];
-            let downloadedLength = 0;
+            const file = fs.createWriteStream(path.resolve(path.dirname(''), '', fpath), { flags: 'w' });
 
+            //use something else than chunk to display progress
             data.on('data', (chunk) => {
-                downloadedLength += chunk.length;
-                const progress = (downloadedLength / totalLength) * 100;
-                console.log(`Progress: ${Math.round(progress)}%`);
+                progressBar.tick(chunk.length);
             });
 
             data.pipe(file);
-
-        } catch (error) {
-            console.error(error);
         }
 
         console.log(``);
