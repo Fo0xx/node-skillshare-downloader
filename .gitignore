@@ -21,3 +21,6 @@ coverage/
 
 #data directory
 data/
+
+#.vscode
+.vscode/
