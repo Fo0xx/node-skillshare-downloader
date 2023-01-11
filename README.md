@@ -56,3 +56,5 @@ The script create a folder with the teacher name and inside a folder with the co
 - All Error handling not implemented yet.
 - Some videos can't be downloaded, I can't do anything about it, it's a limitation of the Skillshare API.
 
+## Credits
+This project is a remake of the original skillshare downloader by kallqvist ([His repo](https://github.com/kallqvist/skillshare-downloader)). I wanted to update the project and to make it in Node.js. Thanks to him who found the original solution.
