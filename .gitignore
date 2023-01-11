@@ -19,8 +19,8 @@ node_modules/
 # coverage directory used by tools like istanbul
 coverage/
 
-#data directory
-data/
+#courses directory
+courses/
 
 #.vscode
 .vscode/
