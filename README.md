@@ -5,9 +5,8 @@
 # Skillshare Course Downloader
 A simple Node.js tool to download Skillshare courses on your computer. This tool uses the Skillshare API to fetch course data and the Axios library to download the course videos.
 
-## Disclaimer
-Please be aware that downloading copyrighted content without permission from the copyright holder is illegal in many countries, including the United States. Under the United States Copyright Act, it is illegal to reproduce or distribute copyrighted material without the permission of the copyright holder. This tool is intended for educational and archival use only and should not be used for any illegal activities. By using this tool, you assume all responsibility for any legal repercussions that may result from your actions. The developer of this tool shall not be held liable for any damages resulting from the use of this tool.
-This script is intended for premium users only. They're the only users that have the ability to download courses according to Skillshare GNU.
+# Disclaimer
+Please be aware that downloading copyrighted content without permission from the copyright holder is illegal in many countries. It is illegal to reproduce or distribute copyrighted material without the permission of the copyright holder. This tool is intended for educational and archival use only and should not be used for any illegal activities. By using this tool, you assume all responsibility for any legal repercussions that may result from your actions. The developer of this tool shall not be held liable for any damages resulting from the use of this tool. This script is intended for premium users only. They're the only users that have the ability to download courses according to Skillshare GNU.
 
 ## Usage
 1. Install Node.js on your computer if you don't have it already. You can download it from the official website.
